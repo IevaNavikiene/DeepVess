@@ -1,3 +1,4 @@
+
 function prepareImage(zStart, isFolder, VesselCh, totalCh, inPath, inFile)
 % extract the vessel channel of a stack, normalize it and save it as 8 bit 
 % image, then remove the motion artifact and save the result as h5 file. 
@@ -65,6 +66,11 @@ for i=1:numel(f)
         f(i).name(1:end-3), 'h5'];
     % read multipage tif file
     im = readtif(inFile);
+    
+    % resize image
+    [x,y,z] = size(im)
+    im = imresize3(im, [x/2, y/2, z]);
+    
     % extract just vessel slices
     im = im(:, :, VesselCh:totalCh:end); 
     % remove the top layer of the image
