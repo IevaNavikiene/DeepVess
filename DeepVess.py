@@ -32,22 +32,20 @@ import sys
 from random import shuffle
 import itertools as it
 
-
-# Change isTrain to True if you want to train the network
-isTrain = False
-# Change isForward to True if you want to test the network
-isForward = True
-# padSize is the padding around the central voxel to generate the field of view
-padSize = ((3, 3), (16, 16), (16, 16), (0, 0))
-WindowSize = np.sum(padSize, axis=1) + 1
-# pad Size aroung the central voxel to generate 2D region of interest
-corePadSize = 2
-# number of epoch to train
-nEpoch = 100
-# The input h5 file location
-if len(sys.argv) > 1:
-    inputData = sys.argv[1]
-else:
+def start_tracing_model(inputData):
+    # Change isTrain to True if you want to train the network
+    isTrain = False
+    # Change isForward to True if you want to test the network
+    isForward = True
+    # padSize is the padding around the central voxel to generate the field of view
+    padSize = ((3, 3), (16, 16), (16, 16), (0, 0))
+    WindowSize = np.sum(padSize, axis=1) + 1
+    # pad Size aroung the central voxel to generate 2D region of interest
+    corePadSize = 2
+    # number of epoch to train
+    nEpoch = 100
+    # The input h5 file location
+    if(inputData.length == 0):
     inputData = raw_input("Enter h5 input file path (e.g. ../a.h5)> ")
 
 # start the TF session
@@ -258,3 +256,9 @@ if isForward:
         np.transpose(np.reshape(V, imShape[0:3]), (2, 1, 0))})
     print(inputData[:-3] + "V_fwd.mat is saved.") 
     
+if __name__ == '__main__':
+    print('Start tracing model')
+    inputData = ''
+    if len(sys.argv) > 1:
+        inputData = sys.argv[1]
+    start_tracing_model(inputData)
