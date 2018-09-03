@@ -49,7 +49,8 @@ if isFolder
     else
         PathName = uigetdir('*.*', 'Select the folder of raw image (*.tif)');
     end
-    f = dir([PathName, '/*.tif']);
+    f = dir(PathName);
+    %f = dir([PathName, "/*.tif"]);
 else
     if nargin < 4
         f(1).name = inFile;
@@ -68,7 +69,7 @@ for i=1:numel(f)
     im = readtif(inFile);
     
     % resize image
-    [x,y,z] = size(im)
+    [x,y,z] = size(im);
     im = imresize3(im, [x/2, y/2, z]);
     
     % extract just vessel slices
@@ -82,7 +83,7 @@ for i=1:numel(f)
     % remove the motion artifact and save the result
     inFile = outFile;
     outFile = [h5FileName(1:end-2), 'tif'];
-    im = tifMotionRemoval(outFile);
+    im = tifMotionRemoval(inFile, outFile);
     % shift im to [-0.5,0.5]
     im = single(im);
     im=im / max(im(:)) - 0.5;

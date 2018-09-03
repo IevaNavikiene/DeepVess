@@ -1,5 +1,5 @@
-function [ ] = postProcess(pad_size, skelDilateR, vDilateR, boxFiltW, ...
-    deadEndLimit, diameterLimit, elongationLimit, FileName, PathName)
+function [ ] = postProcess(FileName, PathName, pad_size, skelDilateR, vDilateR, boxFiltW, ...
+    deadEndLimit, diameterLimit, elongationLimit)
 %post-process the DeepVess result and extract the skeleton of 3D vessels. 
 %   The mat file, the output of DeepVess with suffix of 'V_fwd.mat', with 
 %   similar name to the input h5 file must be in the same folder. similar to 
@@ -48,7 +48,7 @@ function [ ] = postProcess(pad_size, skelDilateR, vDilateR, boxFiltW, ...
 %       Alzheimer disease mouse models. *arXiv preprint, arXiv*:1801.00880.
 
 % default parameters
-if nargin<1
+if nargin<3
     pad_size = 10; % padding to make room for dilation
     skelDilateR = 5; % to dilate skeleton for smoothness 
     vDilateR = 1; % to dilate segmentation to improve connectivity
@@ -59,13 +59,22 @@ if nargin<1
 end
 
 % read input data
-if nargin<8
-    [FileName, PathName] = uigetfile('*.h5', 'Select the image file (*.h5)');
-end
-im = uint8(255*(h5read([PathName, FileName],'/im')+0.5));
+%if nargin<8
+%Ä    [FileName, PathName] = uigetfile('*.h5', 'Select the image file (*.h5)');
+%end
+fullFileName = char(strcat(PathName, FileName));
+mainFileNamePart=FileName(1:end-3)
+FileName=char("noMotion-Ch4-8bit-AD1506preA.h5")
+PathName=char("~/ml/preprocessing/DeepVess/data/AD1506preA-Z36/")
+fullFileName=char("~/ml/preprocessing/DeepVess/data/AD1506preA-Z36/noMotion-Ch4-8bit-AD1506preA.h5")
+mainFileNamePart="noMotion-Ch4-8bit-AD1506preA"
+outputFileName =char("~/ml/preprocessing/DeepVess/data/AD1506preA-Z36/Analysis--masked-noMotion-Ch4-8bit-AD1506preA.mat")
+
+im = uint8(255*(h5read(fullFileName,char("/im"))+0.5));
 
 % read the mask image file if exits 
-maskFile = [PathName, FileName(1:end-3), '-masked.tif'];
+%maskFile = [PathName, FileName(1:end-3), "-masked.tif"];
+maskFile= char(strcat(mainFileNamePart, "-masked.tif"));
 if exist(maskFile, 'file')
     mask = readtif(maskFile);
 else
@@ -73,17 +82,14 @@ else
 end
 
 % reading the input files
-FileName = [FileName(1:end-3), '-V_fwd.mat'];
-load([PathName, FileName],'V')
+fullMatFileName = char(strcat(PathName, strcat(mainFileNamePart,"-V_fwd.mat")));
+
+load(fullMatFileName,'V')
 % Apply the mask
 V= V .* single(mask>0);
-disp(FileName)
 
 % post processing of V
 V=imboxfilt3(V,3)>0.5;
-for i=1:size(V,3)
-    V(:,:,i)=imfill(V(:,:,i),'hole');
-end
 V=single(imfill(imboxfilt3(single(V),3)>0.5,'hole'));
 
 % pad array to make space for dilation
@@ -230,7 +236,8 @@ for i = 1:size(Skel, 2)
 end
 
 % save results
-save([PathName, 'Analysis--masked-', FileName], 'im', 'Skel', 'C', 'V')
+%save([PathName, 'Analysis--masked-', FileName], 'im', 'Skel', 'C', 'V')
+save(outputFileName, 'im', 'Skel', 'C', 'V')
 clear FileName 
 
 
