@@ -1,5 +1,4 @@
-function [ ] = postProcess(FileName, PathName, pad_size, skelDilateR, vDilateR, boxFiltW, ...
-    deadEndLimit, diameterLimit, elongationLimit)
+function [ ] = postProcess(FileName, PathName, OutputName)
 %post-process the DeepVess result and extract the skeleton of 3D vessels. 
 %   The mat file, the output of DeepVess with suffix of 'V_fwd.mat', with 
 %   similar name to the input h5 file must be in the same folder. similar to 
@@ -48,32 +47,24 @@ function [ ] = postProcess(FileName, PathName, pad_size, skelDilateR, vDilateR, 
 %       Alzheimer disease mouse models. *arXiv preprint, arXiv*:1801.00880.
 
 % default parameters
-if nargin<3
-    pad_size = 10; % padding to make room for dilation
-    skelDilateR = 5; % to dilate skeleton for smoothness 
-    vDilateR = 1; % to dilate segmentation to improve connectivity
-    boxFiltW = 3; % to smooth the segmentation and skeleton results
-    deadEndLimit = 11; % to remove dead end hairs
-    diameterLimit = 25; % to remove large vessels
-    elongationLimit = 1; % elongationLimit = Diameter / Length
-end
+pad_size = 10; % padding to make room for dilation
+skelDilateR = 5; % to dilate skeleton for smoothness
+vDilateR = 1; % to dilate segmentation to improve connectivity
+boxFiltW = 3; % to smooth the segmentation and skeleton results
+deadEndLimit = 11; % to remove dead end hairs
+diameterLimit = 25; % to remove large vessels
+elongationLimit = 1; % elongationLimit = Diameter / Length
 
-% read input data
-%if nargin<8
-%Ä    [FileName, PathName] = uigetfile('*.h5', 'Select the image file (*.h5)');
-%end
-fullFileName = char(strcat(PathName, FileName));
-mainFileNamePart=FileName(1:end-3)
-FileName=char("noMotion-Ch4-8bit-AD1506preA.h5")
-PathName=char("~/ml/preprocessing/DeepVess/data/AD1506preA-Z36/")
-fullFileName=char("~/ml/preprocessing/DeepVess/data/AD1506preA-Z36/noMotion-Ch4-8bit-AD1506preA.h5")
-mainFileNamePart="noMotion-Ch4-8bit-AD1506preA"
-outputFileName =char("~/ml/preprocessing/DeepVess/data/AD1506preA-Z36/Analysis--masked-noMotion-Ch4-8bit-AD1506preA.mat")
+
+FileName=char(FileName)
+PathName=char(PathName)
+fullFileName= char(strcat(PathName, FileName));
+mainFileNamePart=FileName(:-3)
+outputFileName =char(strcat(PathName, OutputName));
 
 im = uint8(255*(h5read(fullFileName,char("/im"))+0.5));
 
-% read the mask image file if exits 
-%maskFile = [PathName, FileName(1:end-3), "-masked.tif"];
+% read the mask image file if exits
 maskFile= char(strcat(mainFileNamePart, "-masked.tif"));
 if exist(maskFile, 'file')
     mask = readtif(maskFile);
@@ -236,7 +227,6 @@ for i = 1:size(Skel, 2)
 end
 
 % save results
-%save([PathName, 'Analysis--masked-', FileName], 'im', 'Skel', 'C', 'V')
 save(outputFileName, 'im', 'Skel', 'C', 'V')
 clear FileName 
 
