@@ -9,11 +9,6 @@ def bias_variable(shape):
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial)
 
-
-def conv2d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='VALID')
-
-
 def conv3d(x, W):
     return tf.nn.conv3d(x, W, strides=[1, 1, 1, 1, 1], padding='VALID')
 
@@ -21,7 +16,7 @@ def conv3d(x, W):
 def max_pool(x, shape):
     return tf.nn.max_pool3d(x, ksize=shape,
                             strides=[1, 2, 2, 2, 1], padding='SAME')
-def define_deepvess_architecture():
+def define_deepvess_architecture(x):
     # Define the DeepVess Architecture
 
     W_conv1a = weight_variable([3, 3, 3, 1, 32])
@@ -54,4 +49,4 @@ def define_deepvess_architecture():
     W_fc2 = weight_variable([1024, 1 * 5 * 5 * 2])
     b_fc2 = bias_variable([1 * 5 * 5 * 2])
     h_fc1 = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
-    return tf.reshape(h_fc1, [-1, 1 * 5 * 5, 2])
+    return tf.reshape(h_fc1, [-1, 1 * 5 * 5, 2]), keep_prob

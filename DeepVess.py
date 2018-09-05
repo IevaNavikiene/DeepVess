@@ -27,7 +27,7 @@ import tensorflow as tf
 from six.moves import range
 import h5py
 import scipy.io as io
-import sys
+import sys,os
 import itertools as it
 from api.resources.preprocessing.DeepVess.TrainDeepVess import train_deep_vess
 from api.resources.preprocessing.DeepVess.DeepVessModel import define_deepvess_architecture
@@ -46,7 +46,7 @@ def start_tracing_model(inputData, isTrain=False, isForward = True, padSize = ((
     WindowSize = np.sum(padSize, axis=1) + 1
     # pad Size aroung the central voxel to generate 2D region of interest
     corePadSize = 2
-    keep_prob = 1
+    keep_prob = 1.0
     # start the TF session
     sess = tf.InteractiveSession()
     #create placeholder for input and output nodes
@@ -93,7 +93,7 @@ def start_tracing_model(inputData, isTrain=False, isForward = True, padSize = ((
         return im_
 
 
-    y_conv = define_deepvess_architecture()
+    y_conv, keep_prob_tensor = define_deepvess_architecture(x)
     # loss function over (TP U FN U FP)
     allButTN = tf.maximum(tf.argmax(y_conv, 2), tf.argmax(y_, 2))
     cross_entropy = tf.reduce_mean(tf.multiply(tf.cast(allButTN, tf.float32),
@@ -110,27 +110,32 @@ def start_tracing_model(inputData, isTrain=False, isForward = True, padSize = ((
         train_deep_vess(trnL, it, corePadSize, tstL, tst, nEpoch, trn, train_step, accuracy, keep_prob, x, y_, saver, sess, WindowSize)
         
     if isForward:
-        saver.restore(sess, "private/model-epoch29999.ckpt")
+        saver.restore(sess,os.path.join(os.path.dirname(os.path.realpath(__file__)), "private/model-epoch29999.ckpt"))
         print("Model restored.")
         vID=[]
+
+
         for ii in range(0,V.shape[0]):
             for ij in it.chain(range(corePadSize, V.shape[1] - corePadSize,
                             2 * corePadSize + 1), [V.shape[1] - corePadSize - 1]):
                 for ik in it.chain(range(corePadSize, V.shape[2] - corePadSize,
                             2 * corePadSize + 1), [V.shape[2] - corePadSize - 1]):
                     vID.append(np.ravel_multi_index((ii, ij, ik, 0), V.shape))
-        steps_num = vID.length
+
+        steps_num = len(vID)
         print(steps_num, 'steps_num')
         for i in vID:
             x1 = get_batch3d_fwd(im, imShape, np.array(i))
-            y1 = np.reshape(y_conv.eval(feed_dict={x: x1, keep_prob: 1.0}),
+            y1 = np.reshape(y_conv.eval(feed_dict={x: x1, keep_prob_tensor: keep_prob}),
                           ((2 * corePadSize + 1), (2 * corePadSize + 1), 2))
             r = np.unravel_index(i, V.shape)
             V[r[0], (r[1] - corePadSize):(r[1] + corePadSize + 1),
                 (r[2] - corePadSize):(r[2] + corePadSize + 1), 0] = np.argmax(y1,
                                                                         axis=2)
             if i%10000 == 9999:
-                print("step %d percent is done. " % (i/ steps_num))
+                #if i%2 == 0:
+                print("step %d percent is done. i:%d , steps_num: %d" % (i/ steps_num,i,steps_num))
+                break
         io.savemat(inputData[:-3] + '-V_fwd',{'V':
             np.transpose(np.reshape(V, imShape[0:3]), (2, 1, 0))})
         print(inputData[:-3] + "V_fwd.mat is saved.")
