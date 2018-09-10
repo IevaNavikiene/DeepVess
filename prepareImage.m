@@ -1,5 +1,5 @@
 
-function prepareImage(zStart, isFolder, VesselCh, totalCh, inPath, inFile)
+function prepareImage(zStart, VesselCh, totalCh, inPath, inFile)
 % extract the vessel channel of a stack, normalize it and save it as 8 bit 
 % image, then remove the motion artifact and save the result as h5 file. 
 %
@@ -43,23 +43,8 @@ if nargin<1
 end
 
 % extract the file addresses
-if isFolder
-    if nargin == 5
-        PathName = inPath;
-    else
-        PathName = uigetdir('*.*', 'Select the folder of raw image (*.tif)');
-    end
-    f = dir(PathName);
-    %f = dir([PathName, "/*.tif"]);
-else
-    if nargin < 4
-        f(1).name = inFile;
-        f(1).folder = inPath;
-    else
-        [f(1).name, f(1).folder] = uigetfile('*.*', 'Select raw image (*.tif)');
-    end
-end
-
+f(1).name = inFile;
+f(1).folder = inPath;
 for i=1:numel(f)
     inFile = [f(i).folder, '/', f(i).name];
     outFile = [f(i).folder, '/', 'Ch4-8bit-', f(i).name];

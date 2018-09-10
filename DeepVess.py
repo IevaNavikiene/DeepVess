@@ -135,7 +135,7 @@ def start_tracing_model(inputData, isTrain=False, isForward = True, padSize = ((
             if i%10000 == 9999:
                 #if i%2 == 0:
                 print("step %d percent is done. i:%d , steps_num: %d" % (i/ steps_num,i,steps_num))
-                break
+                
         io.savemat(inputData[:-3] + '-V_fwd',{'V':
             np.transpose(np.reshape(V, imShape[0:3]), (2, 1, 0))})
         print(inputData[:-3] + "V_fwd.mat is saved.")
