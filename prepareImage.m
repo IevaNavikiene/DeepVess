@@ -1,20 +1,9 @@
 
-function prepareImage(zStart, VesselCh, totalCh, inPath, inFile)
+function prepareImage(im, inPath, inFile)
 % extract the vessel channel of a stack, normalize it and save it as 8 bit 
 % image, then remove the motion artifact and save the result as h5 file. 
 %
-%   PREPAREIMAGE() run the function with the default parameters and user 
-%       interface to locate the input file. 
-%   PREPAREIMAGE(zStart, isFolder, VesselCh, totalCh) run the function with the input parameters as
-%       described in bellow and user interface to locate the input file.
-%   PREPAREIMAGE(zStart, isFolder, VesselCh, totalCh, inPath, inFile) run the function with the input parameters as
-%       described in bellow and the file located at [inPath, '/', inFile]
-%
 % Parameters
-%     zStart - the z start of stack right after dura. Put 1 if no cut off is needed.
-%     isFolder - Put true if all the tif files in a folder need to be prepared
-%     VesselCh , totalCh - for cases we have more than one channels.
-%       Otherwise both should be 1. e.g. VesselCh=2 , totalCh=4
 %     inPath - input path to folder of file
 %
 % Example
@@ -34,13 +23,6 @@ function prepareImage(zStart, VesselCh, totalCh, inPath, inFile)
 %       segmenting 3D in vivo multiphoton images of vasculature in 
 %       Alzheimer disease mouse models. *arXiv preprint, arXiv*:1801.00880.
 
-% Default input arguments
-if nargin<1
-    zStart = 1;
-    isFolder = false; 
-    VesselCh = 1;   
-    totalCh = 1;  
-end
 
 % extract the file addresses
 f(1).name = inFile;
@@ -51,16 +33,12 @@ for i=1:numel(f)
     h5FileName = [f(i).folder, '/', 'noMotion-', 'Ch4-8bit-', ...
         f(i).name(1:end-3), 'h5'];
     % read multipage tif file
-    im = readtif(inFile);
+    %im = readtif(inFile);
     
     % resize image
     [x,y,z] = size(im);
     im = imresize3(im, [x/2, y/2, z]);
-    
-    % extract just vessel slices
-    im = im(:, :, VesselCh:totalCh:end); 
-    % remove the top layer of the image
-    im = im(:, :, zStart:end);
+
     im = imNormalize(im);
     [nr, nc, np] = size(im);
     % write the normalized vessel channel
