@@ -1,4 +1,4 @@
-function [ ] = postProcess(FileName, PathName, OutputName)
+function [ ] = postProcess(inputFileName, outputFileName, maskFilePath, fullMatFileName)
 %post-process the DeepVess result and extract the skeleton of 3D vessels. 
 %   The mat file, the output of DeepVess with suffix of 'V_fwd.mat', with 
 %   similar name to the input h5 file must be in the same folder. similar to 
@@ -55,25 +55,14 @@ deadEndLimit = 11; % to remove dead end hairs
 diameterLimit = 25; % to remove large vessels
 elongationLimit = 1; % elongationLimit = Diameter / Length
 
-
-FileName=char(FileName)
-PathName=char(PathName)
-fullFileName= char(strcat(PathName, FileName));
-mainFileNamePart=FileName(:-3)
-outputFileName =char(strcat(PathName, OutputName));
-
-im = uint8(255*(h5read(fullFileName,char("/im"))+0.5));
+im = uint8(255*(h5read(inputFileName,char("/im"))+0.5));
 
 % read the mask image file if exits
-maskFile= char(strcat(mainFileNamePart, "-masked.tif"));
-if exist(maskFile, 'file')
-    mask = readtif(maskFile);
+if exist(maskFilePath, 'file')
+    mask = readtif(maskFilePath);
 else
     mask = ones(size(im));
 end
-
-% reading the input files
-fullMatFileName = char(strcat(PathName, strcat(mainFileNamePart,"-V_fwd.mat")));
 
 load(fullMatFileName,'V')
 % Apply the mask
@@ -228,49 +217,4 @@ end
 
 % save results
 save(outputFileName, 'im', 'Skel', 'C', 'V')
-clear FileName 
-
-
-%% Some extra codes for ploting the centerlines 
-
-% % to plot the results
-% h = implay((skel0>0)/3 + mod(skel0,10)/4 + V1/5); % color coded%
-% %h = implay((skel0>0)/3 + (skel0>1)/4 + V1/5); % vessel vs node
-% h.Visual.ColorMap.UserRangeMax = 1; %(CC0.NumObjects + 2)/2;
-% h.Visual.ColorMap.UserRangeMin = 0;
-% h.Visual.ColorMap.UserRange = 1;
-% h.Visual.ColorMap.MapExpression = 'jet'; 
-
-% % to plot grandtruth skeleton
-% % skel = im;
-% % skel(:) = 0;
-% % for j = 1:size(Skel,2)
-% % Skel0=round(Skel{1,j});
-% % for i=1:size(Skel0,1)-1
-% % s0division=1/sqrt(sum((Skel0(i,:)-Skel0(i+1,:)).^2));
-% % if isinf(s0division), continue, end
-% % for s0=0:s0division:1
-% % x0=Skel0(i,1)+(Skel0(i+1,1)-Skel0(i,1))*s0;
-% % y0=Skel0(i,2)+(Skel0(i+1,2)-Skel0(i,2))*s0;
-% % z0=Skel0(i,3)+ (Skel0(i+1,3)-Skel0(i,3))*s0;
-% % skel(round(x0),round(y0),round(z0))=1;
-% % end
-% % end
-% % end
-% % skel=skel(1:256,:,41:end);
-% % im=im(1:256,:,41:end);
-% % implay(single(skel)+.75*single(im)/255)
-
-% % % to check each vessel
-% % n = 0;
-% % n = n + 10;
-% % for j = n+1 : n+10
-% % h = implay((skel0>0)/4 + (skel0==j+1)/4 + V1/4);
-% % h.Visual.ColorMap.UserRangeMax = 1; %(CC0.NumObjects + 2)/2;
-% % h.Visual.ColorMap.UserRangeMin = 0;
-% % h.Visual.ColorMap.UserRange = 1;
-% % h.Visual.ColorMap.MapExpression = 'jet';
-% % [x,y,z]=ind2sub(size(skel),CC0.PixelIdxList{j}(1));disp([x,y,z]),
-% % end
-
-end
+clear FileName
