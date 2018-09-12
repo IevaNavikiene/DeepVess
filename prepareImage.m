@@ -1,5 +1,5 @@
 
-function prepareImage(im, inPath, inFile)
+function prepareImage(inPath, inFile)
 % extract the vessel channel of a stack, normalize it and save it as 8 bit 
 % image, then remove the motion artifact and save the result as h5 file. 
 %
@@ -23,7 +23,6 @@ function prepareImage(im, inPath, inFile)
 %       segmenting 3D in vivo multiphoton images of vasculature in 
 %       Alzheimer disease mouse models. *arXiv preprint, arXiv*:1801.00880.
 
-
 % extract the file addresses
 f(1).name = inFile;
 f(1).folder = inPath;
@@ -33,7 +32,7 @@ for i=1:numel(f)
     h5FileName = [f(i).folder, '/', 'noMotion-', 'Ch4-8bit-', ...
         f(i).name(1:end-3), 'h5'];
     % read multipage tif file
-    %im = readtif(inFile);
+    im = readtif(inFile);
     
     % resize image
     [x,y,z] = size(im);
