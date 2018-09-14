@@ -42,6 +42,7 @@ for i=1:numel(f)
     [nr, nc, np] = size(im);
     % write the normalized vessel channel
     writetif(uint8(255 * im), outFile)
+   
     % remove the motion artifact and save the result
     inFile = outFile;
     outFile = [h5FileName(1:end-2), 'tif'];
