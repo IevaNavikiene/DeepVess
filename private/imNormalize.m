@@ -5,8 +5,8 @@ function [ imOut ] = imNormalize( im )
 
 im2 = double(im) .* double(~imdilate(im==0, strel('square', 10)));
 im2=double(im(and(im2>0,im2<max(im(:)))));
-p1=prctile(im2,1);
-p99=prctile(im2,99);
+p1=prctile(im2,0.1);
+p99=prctile(im2,99.9);
 if p1==p99
     p1=min(double(im(:)));
     p99=max(double(im(:)));
