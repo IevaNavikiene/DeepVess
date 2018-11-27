@@ -29,24 +29,35 @@ import h5py
 import scipy.io as io
 import sys,os
 import itertools as it
+import time
 #from api.resources.preprocessing.DeepVess.TrainDeepVess import train_deep_vess
 #from api.resources.preprocessing.DeepVess.DeepVessModel import define_deepvess_architecture
+from tensorflow.python.client import device_lib
 
-def start_tracing_model(inputData, isTrain=False, isForward = True, padSize = ((3, 3), (16, 16), (16, 16), (0, 0)), nEpoch = 100):
+
+def get_available_gpus():
+    local_device_protos = device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
+
+def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3), (16, 16), (16, 16), (0, 0))):
     """
 
     :param inputData:
     :param isTrain: Change isTrain to True if you want to train the network
     :param isForward:  Change isForward to True if you want to test the network
     :param padSize: padSize is the padding around the central voxel to generate the field of view
-    :param nEpoch: number of epoch to train
     :return:
     """
+    available_gpus = get_available_gpus()
+    print(available_gpus,'available_gpus')
 
+    if len(available_gpus) != 0:
+        os.environ["CUDA_VISIBLE_DEVICES"] = available_gpus[0]
     WindowSize = np.sum(padSize, axis=1) + 1
     # pad Size aroung the central voxel to generate 2D region of interest
     corePadSize = 2
-
+    batch_size = 1000
     # start the TF session
     sess = tf.InteractiveSession()
     # create placeholder for input and output nodes
@@ -118,18 +129,15 @@ def start_tracing_model(inputData, isTrain=False, isForward = True, padSize = ((
             based on the location of ID entries and core pad size. Note that the ID
             is based on no core pad.
         """
-        im_ = np.ndarray(shape=(ID.size, WindowSize[0], WindowSize[1], WindowSize[2],
-                                WindowSize[3]), dtype=np.float32)
-        for i in range(ID.size):
-            r = np.unravel_index(ID, Vshape)
-            x = 0
-            y = 0
-            im_[i, :, :, :] = im[r[0]:(r[0] + WindowSize[0]),
-                              (r[1] + y):(r[1] + WindowSize[1] + y),
-                              (r[2] + x):(r[2] + WindowSize[2] + x), r[3]:(r[3] + WindowSize[3])]
+        im_ = np.ndarray(shape=(len(ID), WindowSize[0], WindowSize[1], WindowSize[2]
+                                , WindowSize[3]), dtype=np.float32)
+        for i in range(len(ID)):
+            r = np.unravel_index(ID[i], Vshape)
+            im_[i, :, :, :] = im[r[0]:r[0] + WindowSize[0], r[1]:r[1] + WindowSize[1],
+                              r[2]:r[2] + WindowSize[2], r[3]:r[3] + WindowSize[3]]
         return im_
 
-    # Define the DeepVess Architecture
+        # Define the DeepVess Architecture
 
     W_conv1a = weight_variable([3, 3, 3, 1, 32])
     b_conv1a = bias_variable([32])
@@ -186,15 +194,23 @@ def start_tracing_model(inputData, isTrain=False, isForward = True, padSize = ((
 
         steps_num = len(vID)
         print(steps_num, 'steps_num')
-        for i in vID:
-            x1 = get_batch3d_fwd(im, imShape, np.array(i))
-            y1 = np.reshape(y_conv.eval(feed_dict={x: x1, keep_prob: 1.0}), ((2 * corePadSize + 1), (2 * corePadSize + 1), 2))
-            r = np.unravel_index(i, V.shape)
-            V[r[0], (r[1] - corePadSize):(r[1] + corePadSize + 1),
-            (r[2] - corePadSize):(r[2] + corePadSize + 1), 0] = np.argmax(y1,
-                                                                          axis=2)
-            if i % 10000 == 9999:
-                print("step %d percent is done. i:%d , steps_num: %d" % (i / steps_num, i, steps_num))
+        start = time.time()
+        for i in range(np.int(np.ceil(len(vID) / batch_size))):
+            x1 = get_batch3d_fwd(im, imShape, vID[i * batch_size:(i + 1) * batch_size])
+            y1 = np.reshape(y_conv.eval(feed_dict={x: x1, keep_prob: 1.0}), (-1,
+                                                                             (2 * corePadSize + 1),
+                                                                             (2 * corePadSize + 1), 2))
+            for j in range(y1.shape[0]):
+                r = np.unravel_index(vID[i * batch_size + j], V.shape)
+                V[r[0], (r[1] - corePadSize):(r[1] + corePadSize + 1),
+                (r[2] - corePadSize):(r[2] + corePadSize + 1), 0] = np.argmax(y1[j], axis=2)
+
+            if i % 100 == 99:
+                end = time.time()
+                print("step %d is done.  %f min to finish." % (i,
+                                                               (end - start)/ 60 / (i + 1) *
+                                                               (np.int(np.ceil(len(vID) / batch_size)) - i - 1)))
+
         io.savemat(inputData[:-3] + '-V_fwd', {'V':
                                                    np.transpose(np.reshape(V, imShape[0:3]), (2, 1, 0))})
     print(inputData[:-3] + "V_fwd.mat is saved.")
