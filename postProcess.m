@@ -66,6 +66,10 @@ end
 
 load(fullMatFileName,'V')
 % Apply the mask
+disp(size(im))
+disp('aaaaaaa')
+disp(size(V))
+
 V= V .* single(mask>0);
 
 % post processing of V

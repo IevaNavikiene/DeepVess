@@ -33,14 +33,21 @@ import time
 #from api.resources.preprocessing.DeepVess.TrainDeepVess import train_deep_vess
 #from api.resources.preprocessing.DeepVess.DeepVessModel import define_deepvess_architecture
 from tensorflow.python.client import device_lib
-
-
+'''
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
     return [x.name for x in local_device_protos if x.device_type == 'GPU']
 
+available_gpus = get_available_gpus()
+print(available_gpus,'available_gpus')
+if len(available_gpus) != 0:
+    print('using GPU', available_gpus[0].split('/device:GPU:')[1])
+    available_device=available_gpus[0].split('/device:GPU:')[1]
+    os.environ["CUDA_VISIBLE_DEVICES"] = available_device
+'''
+import tensorflow as tf
 
-def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3), (16, 16), (16, 16), (0, 0))):
+def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3), (16, 16), (16, 16), (0, 0)), GPU_device):
     """
 
     :param inputData:
@@ -49,17 +56,17 @@ def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3
     :param padSize: padSize is the padding around the central voxel to generate the field of view
     :return:
     """
-    available_gpus = get_available_gpus()
-    print(available_gpus,'available_gpus')
-
-    if len(available_gpus) != 0:
-        os.environ["CUDA_VISIBLE_DEVICES"] = available_gpus[0]
+    if GPU_device == "":
+        GPU_device=1
+    with tf.device('/device:GPU:' + GPU_device)
     WindowSize = np.sum(padSize, axis=1) + 1
     # pad Size aroung the central voxel to generate 2D region of interest
     corePadSize = 2
     batch_size = 1000
     # start the TF session
-    sess = tf.InteractiveSession()
+    config = tf.ConfigProto()  
+    config.gpu_options.allow_growth=True  
+    sess = tf.InteractiveSession(config=config)
     # create placeholder for input and output nodes
     x = tf.placeholder(tf.float32, shape=[None, WindowSize[0], WindowSize[1],
                                           WindowSize[2], WindowSize[3]])
@@ -179,6 +186,7 @@ def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3
     correct_prediction = tf.multiply(tf.argmax(y_conv, 2), tf.argmax(y_, 2))
     accuracy = tf.divide(tf.reduce_sum(tf.cast(correct_prediction, tf.float32)),
                          tf.reduce_sum(tf.cast(allButTN, tf.float32)))
+   
     sess.run(tf.global_variables_initializer())
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
