@@ -29,25 +29,15 @@ import scipy.io as io
 import sys,os
 import itertools as it
 import time
+import GPUtil
 #from api.resources.preprocessing.DeepVess.TrainDeepVess import train_deep_vess
 #from api.resources.preprocessing.DeepVess.DeepVessModel import define_deepvess_architecture
 from tensorflow.python.client import device_lib
 
-def get_available_gpus():
-    local_device_protos = device_lib.list_local_devices()
-    return [(x.name).split('/device:GPU:')[1] for x in local_device_protos if x.device_type == 'GPU']
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+#import tensorflow as tf
 
-'''
-available_gpus = get_available_gpus()
-print(available_gpus,'available_gpus')
-if len(available_gpus) != 0:
-    print('using GPU', available_gpus[0].split('/device:GPU:')[1])
-    available_device=available_gpus[0].split('/device:GPU:')[1]
-    os.environ["CUDA_VISIBLE_DEVICES"] = available_device
-'''
-import tensorflow as tf
-
-def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3), (16, 16), (16, 16), (0, 0)), GPU_device):
+def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3), (16, 16), (16, 16), (0, 0)), GPU_device="1"):
     """
 
     :param inputData:
@@ -56,20 +46,19 @@ def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3
     :param padSize: padSize is the padding around the central voxel to generate the field of view
     :return:
     """
-    available_gpus_id = get_available_gpus()
-    # TODO implement for CPU
-    if GPU_device == "" or GPU_device not in available_gpus_id:
-        GPU_device="1"
+    deviceID = GPUtil.getFirstAvailable(order = 'random', maxLoad=0.7, maxMemory=0.6, attempts=10, interval=100, verbose=True)
 
-    with tf.device('/device:GPU:' + GPU_device):
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(deviceID[0])
+    import tensorflow as tf
+    if True:#with tf.device(GPU_device_name):
         WindowSize = np.sum(padSize, axis=1) + 1
         # pad Size aroung the central voxel to generate 2D region of interest
         corePadSize = 2
         batch_size = 1000
         # start the TF session
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth=True
-        sess = tf.InteractiveSession(config=config)
+        #config = tf.ConfigProto()
+        #config.gpu_options.allow_growth=True
+        sess = tf.InteractiveSession()
         # create placeholder for input and output nodes
         x = tf.placeholder(tf.float32, shape=[None, WindowSize[0], WindowSize[1],
                                               WindowSize[2], WindowSize[3]])
@@ -225,6 +214,8 @@ def start_tracing_model(inputData, isTrain=False, isForward=True, padSize=((3, 3
             io.savemat(inputData[:-3] + '-V_fwd', {'V':
                                                        np.transpose(np.reshape(V, imShape[0:3]), (2, 1, 0))})
         print(inputData[:-3] + "V_fwd.mat is saved.")
+        tf.reset_default_graph()
+
 
 if __name__ == '__main__':
     print('Start tracing model')
