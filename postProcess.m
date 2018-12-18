@@ -51,26 +51,23 @@ pad_size = 10; % padding to make room for dilation
 skelDilateR = 5; % to dilate skeleton for smoothness
 vDilateR = 1; % to dilate segmentation to improve connectivity
 boxFiltW = 3; % to smooth the segmentation and skeleton results
-deadEndLimit = 11; % to remove dead end hairs
+deadEndLimit = 20; % to remove dead end hairs
 diameterLimit = 25; % to remove large vessels
 elongationLimit = 1; % elongationLimit = Diameter / Length
 
+GOOD_VESSEL = 5;
+SHORT_EDGE_VESSEL=6;
+SHORT_VESSEL_LENGTH=20;
+
 im = uint8(255*(h5read(inputFileName,char("/im"))+0.5));
 
+load(fullMatFileName,'V')
 % read the mask image file if exits
 if exist(maskFilePath, 'file')
     mask = readtif(maskFilePath);
-else
-    mask = ones(size(im));
+    % Apply the mask
+    V= V .* single(mask>0);
 end
-
-load(fullMatFileName,'V')
-% Apply the mask
-disp(size(im))
-disp('aaaaaaa')
-disp(size(V))
-
-V= V .* single(mask>0);
 
 % post processing of V
 V=imboxfilt3(V,3)>0.5;
@@ -180,6 +177,10 @@ for i=1:CC0.NumObjects
     CC0.PixelIdxList{i}=a(V1(a)>0);
 end
 
+% Get bool mask
+im_mask = im > 0;
+im_size = size(im);
+
 % Generate the skeleton outputs
 Skel=cell(3, CC0.NumObjects);
 C = skel;
@@ -187,7 +188,29 @@ for i=1:CC0.NumObjects
     C(CC0.PixelIdxList{i}) = i+1;
     [x,y,z] = ind2sub(size(skel), CC0.PixelIdxList{i});
     Skel{1,i} = [x,y,z];
-    Skel{2,i} = 5;
+    edge_vessel = false;
+    if(size(x)<=SHORT_VESSEL_LENGTH)
+        % in = inpolygon(x,y,x,y); % check if vessel is intersecting with an edge mask
+        for n=1:size(x)
+           if (z(n) == 1  || z(n) == im_size(3) || y(n) == 1 || x(n) == 1 || y(n) == im_size(2) || x(n) == im_size(1))  % if centerline goes through first or last frame or near  actual edge
+               edge_vessel = true;
+               break;
+           end
+           
+           closest_neightbours = im_mask(x(n)-1:x(n)+1, y(n)-1: y(n)+1);
+           if any(closest_neightbours == 0)
+               edge_vessel = true;
+               break;
+           end
+        end
+        if (edge_vessel == true)
+            Skel{2,i} = SHORT_EDGE_VESSEL;
+        else
+            Skel{2,i} = GOOD_VESSEL;
+        end
+    else
+        Skel{2,i} = GOOD_VESSEL;
+    end
     Skel{3,i} = i;
 end
 
