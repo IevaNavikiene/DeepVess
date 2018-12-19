@@ -47,17 +47,17 @@ function [ ] = postProcess(inputFileName, outputFileName, maskFilePath, fullMatF
 %       Alzheimer disease mouse models. *arXiv preprint, arXiv*:1801.00880.
 
 % default parameters
+GOOD_VESSEL = 5;
+SHORT_EDGE_VESSEL=6;
+SHORT_VESSEL_LENGTH=20;
+
 pad_size = 10; % padding to make room for dilation
 skelDilateR = 5; % to dilate skeleton for smoothness
 vDilateR = 1; % to dilate segmentation to improve connectivity
 boxFiltW = 3; % to smooth the segmentation and skeleton results
-deadEndLimit = 20; % to remove dead end hairs
+deadEndLimit = SHORT_VESSEL_LENGTH; % to remove dead end hairs
 diameterLimit = 25; % to remove large vessels
 elongationLimit = 1; % elongationLimit = Diameter / Length
-
-GOOD_VESSEL = 5;
-SHORT_EDGE_VESSEL=6;
-SHORT_VESSEL_LENGTH=20;
 
 im = uint8(255*(h5read(inputFileName,char("/im"))+0.5));
 
@@ -192,13 +192,12 @@ for i=1:CC0.NumObjects
     if(size(x)<=SHORT_VESSEL_LENGTH)
         % in = inpolygon(x,y,x,y); % check if vessel is intersecting with an edge mask
         for n=1:size(x)
-           if (z(n) == 1  || z(n) == im_size(3) || y(n) == 1 || x(n) == 1 || y(n) == im_size(2) || x(n) == im_size(1))  % if centerline goes through first or last frame or near  actual edge
+           if (z(n) <= 2  || z(n) >= (im_size(3)-1) || y(n) <= 2 || x(n) <= 2 || y(n) >= (im_size(2)-1) || x(n) >= (im_size(1)-1))  % if centerline goes through first or last frame or near  actual edge
                edge_vessel = true;
                break;
            end
-           
-           closest_neightbours = im_mask(x(n)-1:x(n)+1, y(n)-1: y(n)+1);
-           if any(closest_neightbours == 0)
+           closest_neightbours = im_mask(x(n)-1:x(n)+1, y(n)-1: y(n)+1, z(n)-1: z(n)+1);
+           if any(closest_neightbours == false)
                edge_vessel = true;
                break;
            end
@@ -243,5 +242,5 @@ for i = 1:size(Skel, 2)
 end
 
 % save results
-save(outputFileName, 'im', 'Skel', 'C', 'V')
+save(outputFileName, 'im', 'Skel', 'C', 'V', 'im_mask')
 clear FileName
